@@ -1,4 +1,3 @@
--- staging tables (tout en TEXT pour gérer les vides)
 DROP TABLE IF EXISTS staging_summary;
 CREATE TABLE staging_summary (
   country TEXT,
@@ -20,7 +19,6 @@ CREATE TABLE staging_daily (
   daily_new_deaths TEXT
 );
 
--- COPY depuis /data (monté dans le container)
 COPY staging_summary
 FROM '/data/worldometer_coronavirus_summary_data_clean.csv'
 WITH (FORMAT csv, HEADER true);
@@ -29,14 +27,14 @@ COPY staging_daily
 FROM '/data/worldometer_coronavirus_daily_data_clean.csv'
 WITH (FORMAT csv, HEADER true);
 
--- Continents
+
 INSERT INTO "Continent" ("continent")
 SELECT DISTINCT TRIM(continent)
 FROM staging_summary
 WHERE continent IS NOT NULL AND TRIM(continent) <> ''
 ON CONFLICT ("continent") DO NOTHING;
 
--- Countries
+
 INSERT INTO "country" ("country", "population", "Id_continent")
 SELECT
   TRIM(s.country),
@@ -47,7 +45,6 @@ JOIN "Continent" ctn ON ctn."continent" = TRIM(s.continent)
 WHERE s.country IS NOT NULL AND TRIM(s.country) <> ''
 ON CONFLICT ("country") DO NOTHING;
 
--- Pandemic + inserts dépendants
 DO $$
 DECLARE covid_id INT;
 BEGIN
@@ -59,7 +56,6 @@ BEGIN
   FROM "pandemic"
   WHERE "name" = 'COVID-19';
 
-  -- pandemic_country (summary)
   INSERT INTO "pandemic_country" (
     "id_country","id_pandemic","total_confirmed","total_deaths",
     "total_recovered","active_cases","total_tests"
@@ -76,7 +72,6 @@ BEGIN
   JOIN "country" co ON co."country" = TRIM(s.country)
   ON CONFLICT ("id_country","id_pandemic") DO NOTHING;
 
-  -- daily_pandemic_country (daily)
   INSERT INTO "daily_pandemic_country" (
     "id_country","id_pandemic","date","active_cases","daily_new_deaths","daily_new_cases"
   )
@@ -93,6 +88,5 @@ BEGIN
   ON CONFLICT ("id_country","id_pandemic","date") DO NOTHING;
 END $$;
 
--- nettoyage
 DROP TABLE staging_summary;
 DROP TABLE staging_daily;
