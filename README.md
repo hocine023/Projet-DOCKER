@@ -31,6 +31,9 @@ L’application est composée d’un **frontend React/Vite**, d’une **API**, d
 
 ![](docs/Docker.png)
 
+![](docs/adminer.png)
+
+
 ---
 
 ## 2. Architecture Technique
