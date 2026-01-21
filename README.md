@@ -9,19 +9,26 @@
 Ce projet déploie une stack **Docker Compose** complète pour consulter des données de pandémie (ex: COVID-19) via un **dashboard web**.
 L’application est composée d’un **frontend React/Vite**, d’une **API**, d’une **base PostgreSQL** persistante, d’un service **Adminer** pour gérer la DB, d’un **reverse proxy Caddy** comme point d’entrée unique, et d’un **tunnel Cloudflare (cloudflared)** pour rendre le projet accessible publiquement en HTTPS.
 
+
 **Fonctionnalités principales :**
 - Sélection d’un **pays** et d’une **pandémie**
 - Affichage de **statistiques** (KPI) et d’un **graphique** (données quotidiennes)
 - **Adminer** pour visualiser / gérer les données PostgreSQL
 - **Tests automatisés** de l’API dans un conteneur dédié (pytest)
 
+
 **Lien accessible (si tunnel actif) :**  
+
  `https://VOTRE-URL.trycloudflare.com`  
 (Le lien est affiché dans les logs du conteneur `cloudflared`)
 
+
 **Screenshot de l'application déployée** :  
+
 ![](docs/Dashboard.png)
+
 ![](docs/Dashboard2.png)
+
 ![](docs/Docker.png)
 
 ---
