@@ -1,0 +1,15 @@
+﻿:80 {
+  encode gzip
+
+  handle_path /api/* {
+    reverse_proxy api:8000
+  }
+
+  handle_path /adminer* {
+    reverse_proxy adminer:8080
+  }
+
+  handle {
+    reverse_proxy front:5173
+  }
+}

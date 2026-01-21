@@ -1,0 +1,99 @@
+services:
+  db:
+    image: postgres:16
+    container_name: pandemic-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db/data:/data:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - app-net
+
+  api:
+    build: ./api
+    container_name: pandemic-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-net
+
+  front:
+    build: ./front
+    container_name: pandemic-front
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    depends_on:
+      - api
+    networks:
+      - app-net
+
+  adminer:
+    image: adminer:4
+    container_name: pandemic-adminer
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - app-net
+
+  caddy:
+    image: caddy:2
+    container_name: pandemic-caddy
+    restart: unless-stopped
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - front
+      - adminer
+    networks:
+      - app-net
+    ports:
+      - "8888:80"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: pandemic-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://caddy:80
+    profiles: ["tunnel"]
+    depends_on:
+      - caddy
+    networks:
+      - app-net
+
+  tests:
+    build: ./tests
+    container_name: pandemic-tests
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      - api
+    profiles: ["test"]
+    networks:
+      - app-net
+
+networks:
+  app-net:
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

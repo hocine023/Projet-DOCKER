@@ -1,0 +1,46 @@
+@startuml
+title Pandemic Dashboard - Diagramme de composants (Docker)
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+component "Utilisateur\n(Navigateur)" as user
+
+node "Docker Network : app-net" {
+
+  component "cloudflared\n(Cloudflare Tunnel)\nHTTPS public" as cloudflared
+
+  component "Caddy\nReverse Proxy\nPoint d'entrée unique" as caddy
+
+  component "Front\nReact / Vite" as front
+  component "API\nBackend" as api
+
+  component "Adminer\n(Admin DB)" as adminer
+  database "PostgreSQL\nDB\nVolume: pgdata\n(persistance)" as db
+
+  component "Tests\npytest\n(profile test)" as tests
+}
+
+user --> cloudflared : HTTPS\n(URL trycloudflare)
+cloudflared --> caddy : HTTP interne
+
+caddy --> api : reverse_proxy\n/api/* -> api:8000
+caddy --> adminer : reverse_proxy\n/adminer -> adminer:8080
+caddy --> front : reverse_proxy\n/ -> front:5173
+
+api --> db : SQL (psycopg)
+adminer --> db : SQL
+
+tests --> api : HTTP\n(endpoints API)
+
+note right of caddy
+- Point d'entrée unique
+- Aucun port exposé pour DB/API
+end note
+
+note right of db
+- healthcheck: pg_isready
+- restart: unless-stopped
+end note
+
+@enduml
