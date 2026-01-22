@@ -7,6 +7,8 @@
 ## 1. Présentation du Projet
 
 Ce projet déploie une stack **Docker Compose** complète pour consulter des données de pandémie (ex: COVID-19) via un **dashboard web**.
+
+Le projet est extrait d'un projet IA Data science **OMS** que j'ai fait dans le cadre de prediction des prochaines pandemies sur un horizon de 7 jours, cette dernierre traite des vraies données nettoyée apres un **ETL COMPLET**.
 L’application est composée d’un **frontend React/Vite**, d’une **API**, d’une **base PostgreSQL** persistante, d’un service **Adminer** pour gérer la DB, d’un **reverse proxy Caddy** comme point d’entrée unique, et d’un **tunnel Cloudflare (cloudflared)** pour rendre le projet accessible publiquement en HTTPS.
 
 
@@ -56,15 +58,56 @@ Ce schéma est généré à partir du fichier `docs/architecture.puml` exporté 
 -  Conteneur de tests dédié (profil `test`)
 
 ---
+---
 
-## 3. Guide d'installation
+## 3. Méthodologie 
 
-### 3.1 Lancer la stack en local
+J'ai construit le projet  en validant chaque étape avant de passer à la suivante. L’objectif était d’obtenir une stack reproductible et conforme aux contraintes “DevOps”.
+
+### Étapes réalisées
+
+1) **Initialisation de la base PostgreSQL**
+- mise en place des fichier ressources `csv`
+- Mise en place de PostgreSQL avec volume `pgdata` .
+- Ajout des scripts d’initialisation dans `db/init` pour charger automatiquement la base au 1er démarrage.
+- Vérification du chargement via des requêtes `SELECT COUNT(*) ...`.
+
+2) **Développement de l’API**
+- Mise en place d’une API qui expose les endpoints nécessaires à l’application (listes pays/pandémies, données “summary”, données “daily”).
+- Connexion à PostgreSQL via variable d’environnement `DATABASE_URL`.
+- Tests manuels curl sur les routes principales.
+
+3) **Développement du Front**
+- Création d’un front React/Vite minimal : filtres (pays, pandémie, dates, type de statistique), KPI, graphique.
+- Consommation de l’API via `VITE_API_URL`.
+- Ajustements UX/CSS 
+
+4) **Mise en place du Reverse Proxy (Caddy)**
+- Objectif : un point d’entrée unique.
+- Suppression de toute exposition directe des ports DB/API.
+
+5) **Accès public HTTPS (cloudflared)**
+- Mise en place d’un tunnel Cloudflare (Quick Tunnel `trycloudflare`) vers Caddy.
+- Vérification d’accès public : front + `/api/health` + `/adminer`.
+
+6) **Tests automatisés et fiabilisation**
+- Ajout d’un conteneur `tests` (pytest) pour valider automatiquement les endpoints.
+- Ajout de `restart: unless-stopped` et `healthcheck` PostgreSQL + `depends_on` pour démarrage propre.
+
+### Outils et organisation
+- **Docker / Docker Compose** pour orchestrer les services.
+- **Git / GitHub** pour versionner le projet.
+- **VS Code + PlantUML** pour le schéma d’architecture.
+
+
+## 4. Guide d'installation
+
+### 4.1 Lancer la stack en local
 
 1) Cloner le dépôt :
 ```bash
-git clone https://github.com/VOTRE-USER/VOTRE-REPO.git
-cd VOTRE-REPO
+git clone https://github.com/hocine023/Projet-DOCKER.git
+cd Projet-DOCKER
 ```
 2) Créer le fichier .env (exemple) :
 ```
@@ -79,13 +122,13 @@ VITE_API_URL=/api
 docker compose up -d --build
 
 ```
-### 3.2 Démarrer l’accès public HTTPS
+### 4.2 Démarrer l’accès public HTTPS
 
 Ce projet utilise un Quick Tunnel gratuit (trycloudflare) : l’URL est temporaire et change à chaque redémarrage.
 
 1) Démarrer cloudflared :
 ```bash
-docker docker compose --profile tunnel up -d cloudflared
+docker compose --profile tunnel up -d cloudflared
 
 ```
 2) Récupérer l’URL publique :
@@ -101,10 +144,36 @@ https://xxxx.trycloudflare.com/api/health (API)
 
 https://xxxx.trycloudflare.com/adminer (Adminer)
 
-### 3.3 Lancer les tests
+### 4.3 Lancer les tests
 
 Les tests sont dans un conteneur dédié (profil test).
 ```bash
 docker compose --profile test up --build --abort-on-container-exit
 
 ```
+
+---
+
+## 5. CI/CD (GitHub Actions)
+
+J'ai mis en place une intégration continue avec GitHub Actions.
+
+### CI (Continuous Integration)
+- **Pipeline API** : build + démarrage DB/API + exécution des tests pytest (conteneur `tests`).
+- **Pipeline Front** : build du front.
+- Les pipelines sont déclenchés uniquement si les fichiers concernés changent ``paths:``.
+
+### CD (Continuous Delivery)
+- Sur un push sur la branche `main`, si la CI est OK :
+  - build de l’image Docker
+  - push de l’image vers GitHub Container Registry
+- Cela permet d’avoir des images “prêtes à déployer” automatiquement.
+
+> Remarque : le déploiement automatique sur un serveur (VM) n’est pas inclus ici.
+
+### Où voir les pipelines
+- Onglet **Actions** du repository GitHub.
+
+![](docs/ci-cd2.png)
+
+![](docs/ci-cd.png)
