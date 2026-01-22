@@ -1,4 +1,4 @@
-name: CI - Front
+name: CI/CD - Front
 
 on:
   push:
@@ -12,7 +12,8 @@ on:
       - "docker-compose.yml"
 
 jobs:
-  front-build:
+  ci:
+    name: CI - Front (build)
     runs-on: ubuntu-latest
     env:
       COMPOSE_BAKE: "0"
@@ -29,3 +30,32 @@ jobs:
 
       - name: Build Front image
         run: docker compose build front
+
+  cd:
+    name: CD - Front (push image to GHCR)
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Front image (latest + sha)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./front
+          push: true
+          tags: |
+            ghcr.io/hocine023/projet-docker-front:latest
+            ghcr.io/hocine023/projet-docker-front:sha-${{ github.sha }}

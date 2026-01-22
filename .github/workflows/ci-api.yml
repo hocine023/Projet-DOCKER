@@ -1,4 +1,4 @@
-name: CI - API
+name: CI/CD - API
 
 on:
   push:
@@ -16,7 +16,8 @@ on:
       - "docker-compose.yml"
 
 jobs:
-  api-tests:
+  ci:
+    name: CI - API (build + tests)
     runs-on: ubuntu-latest
     env:
       COMPOSE_BAKE: "0"
@@ -25,7 +26,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create .env for CI (from GitHub Secrets)
+      - name: Create .env for CI 
         run: |
           cat > .env << EOF
           POSTGRES_DB=${{ secrets.POSTGRES_DB }}
@@ -52,7 +53,7 @@ jobs:
           docker logs pandemic-api --tail 200
           exit 1
 
-      - name: Run tests (pytest container)
+      - name: Run tests
         run: docker compose --profile test up --build --abort-on-container-exit
 
       - name: Logs on failure
@@ -62,3 +63,32 @@ jobs:
       - name: Shutdown
         if: always()
         run: docker compose down -v
+
+  cd:
+    name: CD - API (push image to GHCR)
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push API image (latest + sha)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: true
+          tags: |
+            ghcr.io/hocine023/projet-docker-api:latest
+            ghcr.io/hocine023/projet-docker-api:sha-${{ github.sha }}

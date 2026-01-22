@@ -20,6 +20,7 @@ services:
       - app-net
 
   api:
+    image: ghcr.io/hocine023/projet-docker-api:latest
     build: ./api
     container_name: pandemic-api
     restart: unless-stopped
@@ -32,6 +33,7 @@ services:
       - app-net
 
   front:
+    image: ghcr.io/hocine023/projet-docker-front:latest
     build: ./front
     container_name: pandemic-front
     restart: unless-stopped
