@@ -12,7 +12,6 @@ export async function fetchPandemics() {
   return r.data;
 }
 
-
 export async function fetchSummary(countryId, pandemicId) {
   const r = await axios.get(`${API_URL}/pandemic_country/${countryId}/${pandemicId}`);
   return r.data;
