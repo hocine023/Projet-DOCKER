@@ -11,6 +11,7 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 app = FastAPI(title="Pandemic API", version="1.0.0")
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],   
