@@ -22,24 +22,37 @@ jobs:
       COMPOSE_BAKE: "0"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Create .env for CI
+      - name: Create .env for CI (from GitHub Secrets)
         run: |
-          cat > .env << 'EOF'
-          POSTGRES_DB=pandemic
-          POSTGRES_USER=pandemic
-          POSTGRES_PASSWORD=pandemic
+          cat > .env << EOF
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           VITE_API_URL=/api
           EOF
 
-      - name: Build only needed services
-        run: docker compose build db api tests
+      - name: Build API + tests
+        run: docker compose build api tests
 
       - name: Start DB + API
         run: docker compose up -d db api
 
-      - name: Run tests 
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..40}; do
+            if docker exec pandemic-api sh -lc "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""; then
+              echo "API ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "API not ready"
+          docker logs pandemic-api --tail 200
+          exit 1
+
+      - name: Run tests (pytest container)
         run: docker compose --profile test up --build --abort-on-container-exit
 
       - name: Logs on failure

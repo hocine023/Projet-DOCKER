@@ -18,16 +18,14 @@ jobs:
       COMPOSE_BAKE: "0"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create .env for CI
         run: |
-          cat > .env << 'EOF'
-          POSTGRES_DB=pandemic
-          POSTGRES_USER=pandemic
-          POSTGRES_PASSWORD=pandemic
+          cat > .env << EOF
           VITE_API_URL=/api
           EOF
 
-      - name: Build front image
+      - name: Build Front image
         run: docker compose build front
