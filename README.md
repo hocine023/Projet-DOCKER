@@ -8,7 +8,8 @@
 
 Ce projet déploie une stack **Docker Compose** complète pour consulter des données de pandémie (ex: COVID-19) via un **dashboard web**.
 
-Le projet est extrait d'un projet IA Data science **OMS** que j'ai fait dans le cadre de prediction des prochaines pandemies sur un horizon de 7 jours, cette dernierre traite des vraies données nettoyée apres un **ETL COMPLET**.
+Il est extrait d'un projet IA Data science **OMS** que j'ai fait dans le cadre de prediction ia des prochaines pandemies sur un horizon de 7 jours, ce dernier traite des vraies données nettoyées apres un **ETL COMPLET**.
+
 L’application est composée d’un **frontend React/Vite**, d’une **API**, d’une **base PostgreSQL** persistante, d’un service **Adminer** pour gérer la DB, d’un **reverse proxy Caddy** comme point d’entrée unique, et d’un **tunnel Cloudflare (cloudflared)** pour rendre le projet accessible publiquement en HTTPS.
 
 
@@ -158,18 +159,18 @@ docker compose --profile test up --build --abort-on-container-exit
 
 J'ai mis en place une intégration continue avec GitHub Actions.
 
-### CI (Continuous Integration)
+### CI 
 - **Pipeline API** : build + démarrage DB/API + exécution des tests pytest (conteneur `tests`).
 - **Pipeline Front** : build du front.
 - Les pipelines sont déclenchés uniquement si les fichiers concernés changent ``paths:``.
 
-### CD (Continuous Delivery)
-- Sur un push sur la branche `main`, si la CI est OK :
+### CD 
+- Sur un push sur la branche `main`, si la CI passe :
   - build de l’image Docker
   - push de l’image vers GitHub Container Registry
 - Cela permet d’avoir des images “prêtes à déployer” automatiquement.
 
-> Remarque : le déploiement automatique sur un serveur (VM) n’est pas inclus ici.
+> Remarque : je n'ai pas inclusle déploiement automatique sur un serveur (VM) ici.
 
 ### Où voir les pipelines
 - Onglet **Actions** du repository GitHub.
