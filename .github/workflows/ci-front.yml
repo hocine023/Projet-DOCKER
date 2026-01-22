@@ -1,0 +1,33 @@
+name: CI - Front
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "front/**"
+      - "docker-compose.yml"
+  pull_request:
+    paths:
+      - "front/**"
+      - "docker-compose.yml"
+
+jobs:
+  front-build:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_BAKE: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env for CI
+        run: |
+          cat > .env << 'EOF'
+          POSTGRES_DB=pandemic
+          POSTGRES_USER=pandemic
+          POSTGRES_PASSWORD=pandemic
+          VITE_API_URL=/api
+          EOF
+
+      - name: Build front image
+        run: docker compose build front

@@ -1,0 +1,51 @@
+name: CI - API
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "api/**"
+      - "tests/**"
+      - "db/init/**"
+      - "docker-compose.yml"
+  pull_request:
+    paths:
+      - "api/**"
+      - "tests/**"
+      - "db/init/**"
+      - "docker-compose.yml"
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_BAKE: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env for CI
+        run: |
+          cat > .env << 'EOF'
+          POSTGRES_DB=pandemic
+          POSTGRES_USER=pandemic
+          POSTGRES_PASSWORD=pandemic
+          VITE_API_URL=/api
+          EOF
+
+      - name: Build only needed services
+        run: docker compose build db api tests
+
+      - name: Start DB + API
+        run: docker compose up -d db api
+
+      - name: Run tests 
+        run: docker compose --profile test up --build --abort-on-container-exit
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Shutdown
+        if: always()
+        run: docker compose down -v
