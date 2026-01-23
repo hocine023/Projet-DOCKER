@@ -178,3 +178,102 @@ J'ai mis en place une intégration continue avec GitHub Actions.
 ![](docs/ci-cd2.png)
 
 ![](docs/ci-cd.png)
+
+---
+
+## 6. Transparence IA 
+
+J’ai utilisé l’IA  comme assistant pour gagner du temps sur des tâches répétitives (structure du docker-compose, exemples de workflows CI/CD, aide au débogage).  
+Mais les choix techniques ont été compris, adaptés et validés manuellement.
+
+### Outil utilisé
+- ChatGPT 5.2
+### Usage concret de l’IA
+- Proposition d’architecture (front / api / db / admin / proxy / tunnel / tests), comme le projet orginal OMS que j'ai fait l'annee derniere  etait complexe contenant plusieurs csv et des modeles de prediction ainsi qu'un conteneur grafana et prometheus de supervision j'ai utilise l'ia pour restructurer un front et une api simple et un docker-compose adapter .
+- Aide à interpréter des erreurs (ports occupés, Caddyfile invalide, Vite host, etc.).
+- Aide à structurer la CI/CD :
+J’avais déjà une expérience du CI/CD avec GitLab, mais je n’avais jamais utilisé GitHub Actions.Pour aller plus vite sur la syntaxe et les bonnes pratiques propres à GitHub Actions, j’ai utilisé l’IA comme support, que j’ai adapté à notre stack Docker Compose, remplacé les secrets en clair par GitHub Secrets, et validé la stack tout en observant les logs des runs et en corrigeant les erreurs jusqu’à obtenir une CI/CD stable et compréhensible.
+
+---
+
+## 7. Difficultés rencontrées & solutions (plus complet)
+
+### 7.1 Conflit de ports 
+```txt
+Bind for 0.0.0.0:80 failed: port is already allocated
+listen tcp 0.0.0.0:8080: bind: Only one usage of each socket address is normally permitted.
+```
+solution: exposer caddy sur un port libre et relancer apres :
+```
+caddy:
+  ports:
+    - "8888:80"
+```
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+## 7.2 Erreur Vite à l’encodage BOM dans package.json
+```txt
+[SyntaxError] Unexpected token '﻿', "﻿{ ... is not valid JSON
+Failed to load PostCSS config
+```
+Solution: debug avec chatgpt et reformulation du fichier en UTF-8
+
+## 7..3 Caddyfile invalide
+```txt
+Error: adapting config using caddyfile: /etc/caddy/Caddyfile:2: unrecognized global option: encode
+```
+commande pour le diagnostic :
+```bash
+docker logs pandemic-caddy --tail 100
+docker exec -it pandemic-caddy sh -lc "sed -n '1,120p' /etc/caddy/Caddyfile"
+```
+Solution : mettre encode dans le bloc :80 { ... }, puis restart :
+```bash
+docker compose restart caddy
+```
+
+## 7.4 Vite bloqué via Cloudflare Tunnel 
+```txt
+Blocked request. This host ("xxxx.trycloudflare.com") is not allowed.
+To allow this host, add "xxxx.trycloudflare.com" to server.allowedHosts in vite.config.js.
+```
+Solution : autoriser les hosts côté Vite et rebuild:
+```bash
+// vite.config.js
+export default defineConfig({
+  plugins: [react()],
+  server: { host: true, port: 5173, allowedHosts: "all" }
+});
+```
+```bash
+docker compose up -d --build front
+```
+
+## 7.5 Cloudflared : token invalide / tunnel gratuit
+```txt
+Provided Tunnel token is not valid.
+```
+Solution : utiliser un Quick Tunnel gratuit trycloudflare sans domaine
+```bash
+cloudflared:
+  image: cloudflare/cloudflared:latest
+  command: tunnel --no-autoupdate --url http://caddy:80
+  profiles: ["tunnel"]
+```
+Obtenir l’URL publique :
+```bash
+docker compose --profile tunnel up -d cloudflared
+docker logs pandemic-cloudflared --tail 60
+```
+
+## 7.6 Secrets & .env
+Problème : .env a été push.
+
+Solution: supprimer et rajout du .gitignore ainsi que l'utilisation de GitHub Secrets (POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD) dans les workflows CI/CD.
+```bash
+git rm --cached .env
+git commit -m "Remove .env from repository"
+```
